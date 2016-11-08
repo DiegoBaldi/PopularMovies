@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    tools:context="diegobaldi.popularmovies.MovieDetailFragment"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_margin="@dimen/text_margin">
+
+        <ImageView
+            android:id="@+id/poster_thumb"
+            android:transitionName="@string/poster_thumb_transition_name"
+            android:layout_width="100dp"
+            android:layout_height="140dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/movie_poster_cd"
+            tools:src="@mipmap/ic_launcher"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_gravity="center"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:id="@+id/movie_title"
+                style="?android:attr/textAppearanceMedium"
+                android:textColor="@color/colorPrimaryDark"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:padding="16dp"
+                android:textAllCaps="true"
+                tools:text="Test title" />
+
+
+            <TextView
+                android:id="@+id/release_date"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:layout_weight="1"
+                android:drawableStart="@drawable/release_date_24dp"
+                android:drawableLeft="@drawable/release_date_24dp"
+                tools:text="17-09-2016" />
+
+            <TextView
+                android:id="@+id/user_rating"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:drawableStart="@drawable/rating_24dp"
+                android:drawableLeft="@drawable/rating_24dp"
+                android:gravity="center"
+                android:layout_weight="1"
+                tools:text="8.7/10"/>
+
+        </LinearLayout>
+
+
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/movie_synopsis"
+        style="?android:attr/textAppearanceMedium"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"/>
+
+</LinearLayout>

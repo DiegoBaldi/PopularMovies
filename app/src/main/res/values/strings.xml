@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name" translatable="false">Popular Movies</string>
+    <string name="max_vote" translatable="false">/10</string>
+    <string name="pref_search_type_key" translatable="false">sort_by</string>
+    <string name="pref_search_type_default" translatable="false">top_rated</string>
+    <string name="tmdb_date_format" translatable="false">yyyy-MM-dd</string>
+    <string name="app_release_date_format" translatable="false">MMM yyyy</string>
+    <string name="poster_thumb_transition_name" translatable="false">poster_thumb</string>
+    <string name="title_movie_detail">Movie Detail</string>
+    <string name="pref_search_type_label">Sort by</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="movie_poster_cd">Movie Poster</string>
+    <string name="movie_background_image_dc">Movie background image</string>
+    <string name="settings">Settings</string>
+    <string name="no_connection_msg">Cannot get movies data without an active internet connection. Check your network and retry</string>
+</resources>
