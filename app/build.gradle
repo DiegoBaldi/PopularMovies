@@ -22,6 +22,20 @@ android {
     }
 }
 
+apply plugin: 'com.android.application'
+apply plugin: 'com.neenbedankt.android-apt'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.2.2'
+        classpath 'com.neenbedankt.gradle.plugins:android-apt:1.8'
+    }
+}
+
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
@@ -31,7 +45,11 @@ dependencies {
     compile 'com.android.support:support-v4:24.2.1'
     compile 'com.android.support:recyclerview-v7:24.2.1'
     compile 'com.android.support:design:24.2.1'
+    compile 'com.squareup.retrofit2:retrofit:2.1.0'
     compile 'com.squareup.picasso:picasso:2.5.2'
+    compile 'com.facebook.fresco:fresco:0.14.1'
+    apt 'net.simonvt.schematic:schematic-compiler:0.6.8'
+    compile 'net.simonvt.schematic:schematic:0.6.8'
     testCompile 'junit:junit:4.12'
 }
 
