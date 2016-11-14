@@ -6,7 +6,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:name=".PopularMoviesApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -34,6 +33,10 @@
             android:label="@string/title_activity_settings"
             android:parentActivityName=".MovieListActivity">
         </activity>
+        <provider
+            android:name=".data.generated.PopularMoviesProvider"
+            android:authorities="diegobaldi.popularmovies.data.PopularMoviesProvider"
+            android:exported="false"/>
     </application>
 
 </manifest>

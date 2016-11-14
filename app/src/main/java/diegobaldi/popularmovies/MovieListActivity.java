@@ -3,14 +3,16 @@ package diegobaldi.popularmovies;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityOptionsCompat;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -23,25 +25,28 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.squareup.picasso.Picasso;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
+import diegobaldi.popularmovies.api.TheMovieDBService;
+import diegobaldi.popularmovies.data.FavoriteColumns;
+import diegobaldi.popularmovies.data.PopularMoviesProvider;
 import diegobaldi.popularmovies.models.Movie;
+import diegobaldi.popularmovies.models.MovieList;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 import static diegobaldi.popularmovies.R.id.poster;
 
@@ -53,9 +58,15 @@ import static diegobaldi.popularmovies.R.id.poster;
  * item details. On tablets, the activity presents the list of items and
  * item details side-by-side using two vertical panes.
  */
-public class MovieListActivity extends AppCompatActivity {
+public class MovieListActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
+
+    private static final int URL_LOADER = 0;
 
     private static final String LOG_TAG = MovieListActivity.class.getSimpleName();
+
+    public static final String BASE_URL = "http://api.themoviedb.org/3/";
+
+    public static final String POSTER_BASE_URL = "http://image.tmdb.org/t/p/w185";
 
     private static final int TWO_PANE_POSTER_WIDTH = 450;
     private static final int POSTER_WIDTH = 160;
@@ -65,6 +76,33 @@ public class MovieListActivity extends AppCompatActivity {
     private SharedPreferences.OnSharedPreferenceChangeListener prefListener;
 
     private MovieRecyclerViewAdapter mAdapter;
+
+    private ProgressBar mMoviesProgress;
+    private TextView mEmptyMovies;
+
+    public String[] mProjection = {
+            FavoriteColumns._ID,
+            FavoriteColumns.THE_MOVIE_DB_ID,
+            FavoriteColumns.TITLE,
+            FavoriteColumns.POSTER_URL,
+            FavoriteColumns.BACKDROP_URL,
+            FavoriteColumns.SYNOPSIS,
+            FavoriteColumns.RELEASE_DATE,
+            FavoriteColumns.USER_RATING,
+            FavoriteColumns.CREATED_AT
+    };
+
+    private final int _ID = 0;
+    private final int THE_MOVIE_DB_ID = 1;
+    private final int TITLE = 2;
+    private final int POSTER_URL = 3;
+    private final int BACKDROP_URL = 4;
+    private final int SYNOPSIS = 5;
+    private final int RELEASE_DATE = 6;
+    private final int USER_RATING = 7;
+    private final int CREATED_AT = 8;
+
+    Retrofit mRetrofit;
     /**
      * Whether or not the activity is in two-pane mode, i.e. running on a tablet
      * device.
@@ -80,6 +118,9 @@ public class MovieListActivity extends AppCompatActivity {
         setSharedPreferencesListener();
 
         Log.d(LOG_TAG, "called OnCreate");
+
+        mMoviesProgress = (ProgressBar) findViewById(R.id.movies_progress);
+        mEmptyMovies = (TextView) findViewById(R.id.empty_movies);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -152,10 +193,46 @@ public class MovieListActivity extends AppCompatActivity {
     }
 
     private void tryUpdateMovies() {
-        if(isOnline()){
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-            sortBy = prefs.getString(getString(R.string.pref_search_type_key), getString(R.string.pref_search_type_default));
-            new FetchMoviesTask().execute(sortBy);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        sortBy = prefs.getString(getString(R.string.pref_search_type_key), getString(R.string.pref_search_type_default));
+        if(isOnline() && !sortBy.equalsIgnoreCase("favorites")){
+            mMoviesProgress.setVisibility(View.VISIBLE);
+
+            Gson gson = new GsonBuilder()
+                    .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+                    .create();
+
+            mRetrofit = new Retrofit.Builder()
+                    .baseUrl(BASE_URL)
+                    .addConverterFactory(GsonConverterFactory.create(gson))
+                    .build();
+            TheMovieDBService theMovieDBService = mRetrofit.create(TheMovieDBService.class);
+
+            Call<MovieList> call=theMovieDBService.getMovies(sortBy, BuildConfig.THE_MOVIE_DB_API_KEY);
+            call.enqueue(new Callback<MovieList>() {
+                @Override
+                public void onResponse(Call<MovieList> call, Response<MovieList> response) {
+                    mMoviesProgress.setVisibility(View.GONE);
+                    if(response.code()==200) {
+                        MovieList movieList = response.body();
+                        movies.clear();
+                        movies.addAll(movieList.getResults());
+                    }
+                    if(movies.size()==0)
+                        mEmptyMovies.setVisibility(View.VISIBLE);
+                    else
+                        mEmptyMovies.setVisibility(View.GONE);
+
+                    mAdapter.notifyDataSetChanged();
+                }
+
+                @Override
+                public void onFailure(Call<MovieList> call, Throwable t) {
+                    mMoviesProgress.setVisibility(View.GONE);
+                }
+            });
+        } else if(sortBy.equalsIgnoreCase("favorites")){
+            getSupportLoaderManager().initLoader(URL_LOADER, null, this).forceLoad();
         }
         else{
             Toast.makeText(this,getString(R.string.no_connection_msg), Toast.LENGTH_SHORT).show();
@@ -193,6 +270,58 @@ public class MovieListActivity extends AppCompatActivity {
         return maxElements;
     }
 
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        switch (id) {
+            case URL_LOADER:
+                // Returns a new CursorLoader
+                return new CursorLoader(
+                        this,   // Parent activity context
+                        PopularMoviesProvider.Favorites.FAVORITES,        // Table to query
+                        mProjection,     // Projection to return
+                        null,            // No selection clause
+                        null,            // No selection arguments
+                        null             // Default sort order
+                );
+            default:
+                // An invalid id was passed in
+                return null;
+        }
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        if(sortBy.equalsIgnoreCase("favorites")){
+            mMoviesProgress.setVisibility(View.VISIBLE);
+            movies.clear();
+            if(data.getCount()>0){
+                while(data.moveToNext()){
+                    movies.add(new Movie(data.getInt(THE_MOVIE_DB_ID),
+                            data.getString(POSTER_URL),
+                            data.getString(TITLE),
+                            data.getString(BACKDROP_URL),
+                            data.getString(RELEASE_DATE),
+                            data.getString(SYNOPSIS),
+                            data.getDouble(USER_RATING)));
+                }
+            }
+            if(movies.size()==0)
+                mEmptyMovies.setVisibility(View.VISIBLE);
+            else
+                mEmptyMovies.setVisibility(View.GONE);
+
+            mMoviesProgress.setVisibility(View.GONE);
+            mAdapter.notifyDataSetChanged();
+        } else {
+            data.close();
+        }
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        Log.d(LOG_TAG, "onLoaderReset");
+    }
+
     public class MovieRecyclerViewAdapter
             extends RecyclerView.Adapter<MovieRecyclerViewAdapter.ViewHolder> {
 
@@ -215,7 +344,9 @@ public class MovieListActivity extends AppCompatActivity {
         public void onBindViewHolder(final ViewHolder holder, int position) {
             holder.mMovie = mValues.get(position);
 
-            Picasso.with(mContext).load(holder.mMovie.posterURL).into(holder.mPoster);
+            String posterURL = POSTER_BASE_URL + holder.mMovie.getPosterPath();
+
+            Picasso.with(mContext).load(posterURL).into(holder.mPoster);
 
             holder.mView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -231,9 +362,13 @@ public class MovieListActivity extends AppCompatActivity {
                     } else {
                         Context context = v.getContext();
                         Intent intent = new Intent(context, MovieDetailActivity.class);
-                        ActivityOptionsCompat options = ActivityOptionsCompat.makeSceneTransitionAnimation(MovieListActivity.this, v, "poster_thumb");
                         intent.putExtra("movie", holder.mMovie);
-                        startActivity(intent, options.toBundle());
+                        if(sortBy.equalsIgnoreCase("favorites")){
+                            startActivity(intent);
+                        } else {
+                            ActivityOptionsCompat options = ActivityOptionsCompat.makeSceneTransitionAnimation(MovieListActivity.this, v, "poster_thumb");
+                            startActivity(intent, options.toBundle());
+                        }
                     }
                 }
             });
@@ -258,136 +393,6 @@ public class MovieListActivity extends AppCompatActivity {
             @Override
             public String toString() {
                 return super.toString() + " '" + mMovie.toString() + "'";
-            }
-        }
-    }
-
-
-    //Method taken from the Sunshine App's lessons
-    private class FetchMoviesTask extends AsyncTask<String, Void,  Movie[]> {
-
-        private final String LOG_TAG = FetchMoviesTask.class.getSimpleName();
-
-        @Override
-        protected Movie[] doInBackground(String... params) {
-
-            if(params.length == 0){
-                return null;
-            }
-
-            HttpURLConnection urlConnection = null;
-            BufferedReader reader = null;
-
-            // Will contain the raw JSON response as a string.
-            String moviesJsonStr = null;
-
-            String language = "en-US";
-
-            try {
-                // Construct the URL for the The Movie Database query
-                // Possible parameters are available at TMDB's API page, at
-                // https://developers.themoviedb.org/3/movies
-                final String MOVIE_DB_BASE_URL = "https://api.themoviedb.org/3/movie/"+params[0]+"?";
-                final String API_KEY_PARAM = "api_key";
-                final String LANGUAGE_PARAM = "language";
-
-                Uri builtUri = Uri.parse(MOVIE_DB_BASE_URL).buildUpon()
-                        .appendQueryParameter(API_KEY_PARAM, BuildConfig.THE_MOVIE_DB_API_KEY)
-                        .appendQueryParameter(LANGUAGE_PARAM, language)
-                        .build();
-
-                URL url = new URL(builtUri.toString());
-
-                // Create the request to The Movie DB, and open the connection
-                urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.setRequestMethod("GET");
-                urlConnection.connect();
-
-                // Read the input stream into a String
-                InputStream inputStream = urlConnection.getInputStream();
-                StringBuffer buffer = new StringBuffer();
-                if (inputStream == null) {
-                    // Nothing to do.
-                    return null;
-                }
-                reader = new BufferedReader(new InputStreamReader(inputStream));
-
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    // Since it's JSON, adding a newline isn't necessary (it won't affect parsing)
-                    // But it does make debugging a *lot* easier if you print out the completed
-                    // buffer for debugging.
-                    buffer.append(line + "\n");
-                }
-
-                if (buffer.length() == 0) {
-                    // Stream was empty.  No point in parsing.
-                    return null;
-                }
-                moviesJsonStr = buffer.toString();
-            } catch (IOException e) {
-                Log.e(LOG_TAG, "Error ", e);
-                // If the code didn't successfully get the movies data, there's no point in attempting
-                // to parse it.
-                return null;
-            } finally{
-                if (urlConnection != null) {
-                    urlConnection.disconnect();
-                }
-                if (reader != null) {
-                    try {
-                        reader.close();
-                    } catch (final IOException e) {
-                        Log.e(LOG_TAG, "Error closing stream", e);
-                    }
-                }
-            }
-
-            try {
-                return getMoviesFromJson(moviesJsonStr);
-            } catch (JSONException e) {
-                Log.e(LOG_TAG, e.getMessage(), e);
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        //Method taken from the Sunshine App's lessons
-        private Movie[] getMoviesFromJson(String moviesJsonStr)
-        throws  JSONException{
-            // These are the names of the JSON objects that need to be extracted.
-            final String TMDB_LIST = "results";
-            final String TMDB_ID = "id";
-            final String TMDB_TITLE = "title";
-            final String TMDB_POSTER = "poster_path";
-            final String TMDB_BACKDROP = "backdrop_path";
-            final String TMDB_SYNOPSIS = "overview";
-            final String TMDB_RELEASE_DATE = "release_date";
-            final String TMDB_USER_RATING = "vote_average";
-
-            JSONObject forecastJson = new JSONObject(moviesJsonStr);
-            JSONArray movieArray = forecastJson.getJSONArray(TMDB_LIST);
-
-            Movie[] movies = new Movie[movieArray.length()];
-            for(int i = 0; i < movieArray.length(); i++) {
-                JSONObject movieData = movieArray.getJSONObject(i);
-                movies[i] = new Movie(movieData.getInt(TMDB_ID),
-                    movieData.getString(TMDB_TITLE),
-                    movieData.getString(TMDB_POSTER),
-                    movieData.getString(TMDB_BACKDROP),
-                    movieData.getString(TMDB_SYNOPSIS),
-                    movieData.getDouble(TMDB_USER_RATING),
-                    movieData.getString(TMDB_RELEASE_DATE));
-            }
-            return movies;
-        }
-
-        @Override
-        protected void onPostExecute(Movie[] result) {
-            if (result != null) {
-                movies.clear();
-                Collections.addAll(movies, result);
-                mAdapter.notifyDataSetChanged();
             }
         }
     }

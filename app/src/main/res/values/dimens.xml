@@ -3,6 +3,5 @@
     <dimen name="app_bar_height">200dp</dimen>
     <dimen name="item_width">200dp</dimen>
     <dimen name="text_margin">16dp</dimen>
-    <dimen name="poster_width">160dp</dimen>
-    <dimen name="poster_width_two_pane">450dp</dimen>
+    <dimen name="horizontal_margin">16dp</dimen>
 </resources>

@@ -13,7 +13,7 @@ import net.simonvt.schematic.annotation.TableEndpoint;
 @ContentProvider(authority = PopularMoviesProvider.AUTHORITY, database = PopularMoviesDatabase.class)
 public final class PopularMoviesProvider {
 
-    public static final String AUTHORITY = "net.simonvt.schematic.sample.NotesProvider";
+    public static final String AUTHORITY = "diegobaldi.popularmovies.data.PopularMoviesProvider";
 
     @TableEndpoint(table = PopularMoviesDatabase.FAVORITES)
     public static class Favorites {
@@ -22,6 +22,6 @@ public final class PopularMoviesProvider {
                 path = "favorites",
                 type = "vnd.android.cursor.dir/list",
                 defaultSort = FavoriteColumns.CREATED_AT + " ASC")
-        public static final Uri LISTS = Uri.parse("content://" + AUTHORITY + "/favorites");
+        public static final Uri FAVORITES = Uri.parse("content://" + AUTHORITY + "/favorites");
     }
 }

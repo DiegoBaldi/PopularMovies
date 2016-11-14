@@ -28,6 +28,18 @@ public interface FavoriteColumns {
     @DataType(TEXT) @NotNull
     String POSTER_URL = "poster_url";
 
+    @DataType(TEXT)
+    String SYNOPSIS = "synopsis";
+
+    @DataType(TEXT)
+    String USER_RATING = "user_rating";
+
+    @DataType(TEXT)
+    String RELEASE_DATE = "release_date";
+
+    @DataType(TEXT) @NotNull
+    String BACKDROP_URL = "backdrop_url";
+
     @DataType(INTEGER) @NotNull
     String CREATED_AT = "created_at";
 }

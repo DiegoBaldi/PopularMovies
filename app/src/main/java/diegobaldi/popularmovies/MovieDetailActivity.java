@@ -1,11 +1,21 @@
 package diegobaldi.popularmovies;
 
+import android.content.ContentValues;
+import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.support.design.widget.CoordinatorLayout;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
+import diegobaldi.popularmovies.data.FavoriteColumns;
+import diegobaldi.popularmovies.data.PopularMoviesProvider;
 import diegobaldi.popularmovies.models.Movie;
 
 /**
@@ -17,11 +27,15 @@ import diegobaldi.popularmovies.models.Movie;
 public class MovieDetailActivity extends AppCompatActivity {
 
     private Movie movie;
+    View mCoordinatorLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_movie_detail);
+
+        mCoordinatorLayout = (CoordinatorLayout) findViewById(R.id.coordinator_layout);
+
         Toolbar toolbar = (Toolbar) findViewById(R.id.detail_toolbar);
         setSupportActionBar(toolbar);
 
@@ -31,6 +45,45 @@ public class MovieDetailActivity extends AppCompatActivity {
             actionBar.setDisplayHomeAsUpEnabled(true);
             actionBar.setDisplayShowTitleEnabled(false);
         }
+
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.add_to_favorite);
+
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                new Thread(new Runnable() {
+                    @Override public void run() {
+                        Long tsLong = System.currentTimeMillis()/1000;
+                        Integer ts = (int) (long) tsLong;
+                        ContentValues cv = new ContentValues();
+                        cv.put(FavoriteColumns.THE_MOVIE_DB_ID, movie.getId());
+                        cv.put(FavoriteColumns.TITLE, movie.getTitle());
+                        cv.put(FavoriteColumns.POSTER_URL, movie.getPosterPath());
+                        cv.put(FavoriteColumns.BACKDROP_URL, movie.getBackdropPath());
+                        cv.put(FavoriteColumns.SYNOPSIS, movie.getOverview());
+                        cv.put(FavoriteColumns.USER_RATING, movie.getVoteAverage());
+                        cv.put(FavoriteColumns.RELEASE_DATE, movie.getReleaseDate());
+                        cv.put(FavoriteColumns.CREATED_AT, ts);
+                        final Uri uri_inserted = getContentResolver().insert(PopularMoviesProvider.Favorites.FAVORITES, cv);
+                        if(uri_inserted!=null){
+                            final String id = uri_inserted.getLastPathSegment();
+                            Snackbar snackbar = Snackbar
+                                    .make(mCoordinatorLayout, "Movie added to favorites!", Snackbar.LENGTH_LONG)
+                                    .setAction("CANCEL", new View.OnClickListener() {
+                                        @Override
+                                        public void onClick(View view) {
+                                            getContentResolver().delete(PopularMoviesProvider.Favorites.FAVORITES, "_ID = ?", new String[]{id});
+                                        }
+                                    });
+
+                            // Changing message text color
+                            snackbar.setActionTextColor(Color.RED);
+                            snackbar.show();
+                        }
+                    }
+                }).start();
+            }
+        });
 
         // savedInstanceState is non-null when there is fragment state
         // saved from previous configurations of this activity
@@ -57,6 +110,12 @@ public class MovieDetailActivity extends AppCompatActivity {
             movie = savedInstanceState.getParcelable("movie");
             arguments.putParcelable("movie", movie);
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        return true;
+
     }
 
     @Override
